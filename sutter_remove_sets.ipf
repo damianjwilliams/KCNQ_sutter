@@ -78,7 +78,7 @@ End
 
 Function template_file_for_KCNQ3()
 
-variable/g root:gKCNQ_template = 1 
+variable/g root:gtemplate_is_complete = 1
 
 check_and_run()
 

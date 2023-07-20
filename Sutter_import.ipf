@@ -10,7 +10,6 @@ Menu "DJW Sutter Macros", dynamic
 "Rearrange Sutter files",/Q, put_in_folders()
 "Run Sutter analysis",/Q, check_and_run()
 "Create KCNQ template folder",/Q,template_file_for_KCNQ3()
-//Make_template_wave(matchStr)
 "Import KCNQ voltage template",/Q,import_template_wave()
 End
 
@@ -18,7 +17,10 @@ End
 
 Function put_in_folders()
 
+string/g root:gCustomPath = "C:\\Users\\dw2471\\OneDrive - cumc.columbia.edu\\temp\\igor_output\\"
+
 setdatafolder root:SutterPatch:Data
+
 
  
 variable number_sweeps,i,k,num_sets
@@ -79,6 +81,8 @@ variable number_sets,i,j,number_working_mp_sweeps
 
 setdataFolder root:
 variable/g run_sutter = 1
+NVAR gKCNQ_template
+NVAR gtemplate_is_complete 
 
 setdataFolder root:sutterpatch:data
 
@@ -90,7 +94,12 @@ For(i=0;i<number_sets;i+=1)
 	
 	setdataFolder root:sutterpatch:data
 	setdatafolder(stringfromList(i,list_of_sets))
+	//Get correct list
+	if(gtemplate_is_complete==0)
+	list_working_mp_sweeps = Wavelist("RecordB*",";","")
+	else
 	list_working_mp_sweeps = Wavelist("RecordA*",";","")
+	endif
 	number_working_mp_sweeps = Itemsinlist(list_working_mp_sweeps)
 	graph_name = stringfromList(i,list_of_sets)
 	Display/N=$graph_name 
@@ -146,8 +155,6 @@ Function check_trace_proc(name,value)
 String name
 Variable value
 variable/g gRadioVal
-
-
 NVAR/Z gKCNQ_template = root:gKCNQ_template
 
 if (!NVAR_Exists(gKCNQ_template))	// No such global numeric variable?
@@ -158,10 +165,11 @@ if(gKCNQ_template==1)
 print("*********************************************")
 string current_df = getdatafolder(1)
 DuplicateDataFolder $current_df, root:kcnq_template
-//Rescale_template()
+string matchStr = "RecordB*"
+Make_template_wave(matchStr)
 KillAllGraphs()
 KillWindow check_panel
-root:gKCNQ_template = 0
+
 Return value
 endif
 

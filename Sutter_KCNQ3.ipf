@@ -10,7 +10,7 @@
 Constant kKCNQAmpStart = 1900
 Constant kKCNQLengthMeasure = 50
 
-Constant kKCNQTCstart = 2185
+Constant kKCNQTCstart = 2010
 Constant kKCNQTCLength = 10
 
 Constant kKCNQLeakStart = 400
@@ -21,6 +21,8 @@ Constant kIVPlotEnd =  2400
 
 Constant kOtherPlotStart = 250
 Constant kOtherPlotEnd =  1850
+
+
 
 
 
@@ -258,6 +260,7 @@ variable y1,x1,y2,x2,gradient,intercept
 
 display/N=leak_adjusted_plots
 display/N=raw_current_plots
+display/N=tail_current_plots
 
 
 
@@ -278,9 +281,13 @@ string TrcCmdNm = Command_V_name +num2str(j)
 if(dataFolderExists("root:kcnq_template"))
 
 DFREF currDF = getdataFolderDFR()
-setdataFolder root:temp_command_folder
+//setdataFolder root:temp_command_folder
+//Wave TraceCmd = $TrcCmdNm
+//setdataFolder currdf
+
+Duplicate/O root:temp_command_folder:$TrcCmdNm, $TrcCmdNm
 Wave TraceCmd = $TrcCmdNm
-setdataFolder currdf
+
 
 else
 		
@@ -290,7 +297,6 @@ endif
 
 
 Wave TraceCurr = $TrcCrrNm
-
 
 
 
@@ -327,12 +333,16 @@ leak_adjusted_trace = TraceCurr - (TraceCmd*gradient+intercept)
 if(grun_sutter == 1)
 
 	variable leak_adjusted_trace_scale = dimdelta(leak_adjusted_trace,0)
-	variable leak_adjusted_trace_scale_ms = leak_adjusted_trace_scale*1000
+	variable leak_adjusted_trace_scale_ms = leak_adjusted_trace_scale
 	setscale/P x,0,leak_adjusted_trace_scale_ms,"ms",leak_adjusted_trace	
 	
 	
 endif
 
+
+string wf_adjusted_name = TrcCrrNm+"_wf"
+Duplicate/O/R=(2010,2197) $TrcCrrNm, $wf_adjusted_name
+Redimension/N=-1/R $wf_adjusted_name
 
 
 
@@ -341,7 +351,7 @@ endif
 WaveStats/Q/R=(kKCNQAmpStart,kKCNQAmpStart+kKCNQLengthMeasure) leak_adjusted_trace
 current_amplitude = V_avg
 
-print ("Current amplitude "+num2str(current_amplitude))
+print ("Current amplitude "+num2str(current_amplitude*1e12))
 
 WaveStats/Q/R=(kKCNQAmpStart,kKCNQAmpStart+kKCNQLengthMeasure) TraceCmd
 command_voltage = V_avg
@@ -376,9 +386,23 @@ tail_current_table[Inf] =   tail_current_amplitude
 
 AppendToGraph/W=leak_adjusted_plots  leak_adjusted_trace
 AppendToGraph/W=raw_current_plots  TraceCurr
+AppendToGraph/W=tail_current_plots  leak_adjusted_trace
 
 endfor
 
+
+print(WaveList("*_wf", ";", ""))
+Concatenate WaveList("*_wf", ";", ""), outWave
+NewWaterfall/W=(1082,46,2321,633) outWave
+ModifyWaterfall angle=70, axlen= 0.6, hidden= 3
+//Apply color as a function of Z
+Duplicate outWave,mat1ColorIndex
+mat1ColorIndex=y
+ModifyGraph zColor(outWave)={mat1ColorIndex,*,*,Rainbow}
+
+yewq_sutter("all_traces")
+	
+Doupdate/W=all_traces
 
 
 
@@ -398,11 +422,11 @@ wave  minus_twenty_voltage = $minus_twenty_voltage_nm
 WaveStats/Q/R=(kKCNQAmpStart,kKCNQAmpStart+kKCNQLengthMeasure) minus_twenty_trace
 variable minus_twenty_amp = V_avg
 
-WaveStats/Q/R=(kKCNQAmpStart,kKCNQAmpStart+kKCNQLengthMeasure)minus_twenty_voltage
+WaveStats/Q/R=(kKCNQAmpStart,kKCNQAmpStart+kKCNQLengthMeasure) minus_twenty_voltage
 variable minus_twenty_volt = V_avg
 
 Display/N=minus_twenty minus_twenty_trace
-Label/W=minus_twenty bottom "Time mS"
+Label/W=minus_twenty bottom "Time (ms)"
 Label/W=minus_twenty left "Current (pA)"
 TextBox/W=minus_twenty/C/N=titleX/F=0/A=MT/E=1/B=1 cell_id+"\tVoltage: "+num2str(minus_twenty_volt)+"\tCurrent: "+num2str(minus_twenty_amp)
 
@@ -486,6 +510,20 @@ SetDrawEnv/W=leak_adjusted_plots xcoord= bottom,ycoord= left,dash=2,linethick=1
 DrawLine/W=leak_adjusted_plots (kKCNQTCstart+kKCNQTCLength),V_max,(kKCNQTCstart+kKCNQTCLength),V_min
 
 
+DoWindow/F tail_current_plots
+Label/W=tail_current_plots left "Current_amplitude"
+Label/W=tail_current_plots bottom "Time (ms)"
+SetAxis/W=tail_current_plots bottom 2000,2197
+DoWindow/F tail_current_plots
+getAxis/W=tail_current_plots left
+SetDrawEnv/W=tail_current_plots xcoord= bottom,ycoord= left,dash=2,linethick=1
+DrawLine/W=tail_current_plots kKCNQTCstart,V_max,kKCNQTCstart,V_min
+SetDrawEnv/W=tail_current_plots xcoord= bottom,ycoord= left,dash=2,linethick=1
+DrawLine/W=tail_current_plots (kKCNQTCstart+kKCNQTCLength),V_max,(kKCNQTCstart+kKCNQTCLength),V_min
+
+
+
+
 Display/N=cell_details_1
 TextBox/W=cell_details_1/C/B=1/N=Tinfo/F=0/A=MC "\\Zr130Conductance\rCell_ID\t" + cell_id+"\r"+"Genotype\t" +gGenotype
 
@@ -517,21 +555,31 @@ SVAR gCustomPath
 	AppendLayoutObject/W=data_layout/F=1/T=0/R=(309,184,588,372) Graph leak_adjusted_plots
 	AppendLayoutObject/W=data_layout/F=1/T=0/R=(16,180,308,376) Graph raw_current_plots
 	AppendLayoutObject/W=data_layout/F=1/T=0/R=(84,371,479,560) Graph conductance_plot
+	AppendLayoutObject/W=data_layout/F=1/T=0/R=(308,372,598,561) Graph conductance_plot
 	AppendLayoutObject/W=data_layout/F=1/T=0/R=(16,24,308,180) Graph cell_details_1
 	AppendLayoutObject/W=data_layout/F=1/T=0/R=(308,24,616,184) Graph cell_details_2
-	AppendLayoutObject/W=data_layout/F=1/T=0/R=(82,565,479,775) Graph minus_twenty
+	AppendLayoutObject/W=data_layout/F=1/T=0/R=(294,564,588,768) Graph minus_twenty
+	AppendLayoutObject/W=data_layout/F=1/T=0/R=(20,563,292,768) Graph tail_current_plots
+	AppendLayoutObject/W=data_layout/F=1/T=0/R=(18,375,306,561) Graph Graph0
+	
+	
+	
 
 SavePict/E=-8/O/WIN=data_layout as  gCustomPath+gcell_id+"_conductance.pdf"
+
+
+setdatafolder root:
+NVAR gRm
+NVAR gHold
+NVAR gRa
+NVAR gCapacitance
 
 
 setdataFolder root:$gcell_id
 
 
 SVAR gGenotype
-NVAR gRm
-NVAR gHold
-NVAR gRa
-NVAR gCapacitance,gV_half_measure,gRate_measure,gminus_twenty_amp,gminus_twenty_volt
+NVAR gV_half_measure,gRate_measure,gminus_twenty_amp,gminus_twenty_volt
 
 
 string notebookname = "Data_"+gcell_id
@@ -553,7 +601,35 @@ Notebook $NotebookName text = "Amp_at_-20_mV\t" + num2str(gminus_twenty_amp) +"\
 Notebook $NotebookName text = "Voltage_check_mV\t" + num2str(gminus_twenty_volt) +"\r"
 
 
+
+//Add raw vals to output 
+wave tail_current_table,command_voltage_table
+
+variable NumDataPoints =numpnts(tail_current_table)
+variable idx
+string str
+Notebook $NotebookName selection={endOfFile, endOfFile}
+
+For(idx=0;idx<NumDataPoints;idx+=1)
+
+string  ComV = num2str(command_voltage_table[idx])
+string  MemI = num2str(tail_current_table[idx])
+
+str = "ComV - MemI\t"+ComV+" - "+MemI
+
+Notebook $NotebookName text= str+"\r"
+
+endfor
+
+
+
+
+
+
+
 SaveNotebook/O/S=6 $NoteBookName as gCustomPath+gcell_id+"_data.txt"
+
+
 
 
 end
@@ -604,14 +680,15 @@ end
 
 
 Function Make_template_wave(matchStr)
-	String matchStr	// As for the WaveList function.	
+	String matchStr	// As for the WaveList function.
+	SVAR gCustomPath = root:gCustomPath	
 	String list
 	setDataFolder root:kcnq_template
 	list = WaveList(matchStr, ";", "")
-	concatenate/O/NP=1/DL list,out_wave
+	concatenate/O/NP=1/DL list,out_wave	
+	Save/O/J/I out_wave as gCustomPath+"KCNQ3_template_wave.txt"	
 	
-	Save/O/J/I out_wave as "export_wave.txt"
-	
+	variable/g root:gtemplate_is_complete = 1
 End
 
 
@@ -642,4 +719,79 @@ endfor
 
 end
 	
+	
+	
+	
+	
+Function ApplyFakeWaterfall_sutter_tail(graphName, dx, dy, hidden)      // e.g., ApplyFakeWaterfall("Graph0", 2, 100, 1)
+    String graphName    // Name of graph or "" for top graph
+    Variable dx, dy     // Used to offset traces to create waterfall effect
+    Variable hidden     // If true, apply hidden line removal
+   
+    String traceList = TraceNameList(graphName, ";", 1)
+    Variable numberOfTraces = ItemsInLIst(traceList)
+
+    Variable traceNumber
+    for(traceNumber=0; traceNumber<numberOfTraces; traceNumber+=1)
+        String trace = StringFromList(traceNumber, traceList)
+        Variable offsetX = (numberOfTraces-traceNumber-1) * dx
+        Variable offsetY = (numberOfTraces-traceNumber-1) * dy
+        ModifyGraph/W=$graphName offset($trace)={offsetX,offsetY}
+        ModifyGraph/W=$graphName plusRGB($trace)=(65535,65535,65535)    // Fill color is white
+        if (hidden)
+            ModifyGraph/W=$graphName mode($trace)=7, hbFill($trace)=1       // Fill to zero, erase mode
+        else
+            ModifyGraph/W=$graphName mode($trace)=0                     // Lines between points
+        endif
+    endfor
+End
+
+
+
+
+
+
+
+
+
+
+
+
+Function yewq_sutter(thebigname)
+string thebigname
+string PlotNames  
+variable numTraces
+ColorTab2Wave BlueRedGreen
+
+//TraceNameList(graphNameStr, separatorStr, optionsFlag)
+
+PlotNames = (TraceNameList(thebigname, ";", 1))
+
+print(PlotNames)
+numTraces = itemsinList(PlotNames)
+print (num2str(numTraces))
+
+
+	if (numTraces <= 0)
+		return -1
+	endif
+	
+   Variable denominator= numTraces-1
+   if( denominator < 1 )
+       denominator= 1    // avoid divide by zero, use just the first color for 1 trace
+   endif
+
+Wave rgb = M_colors
+	Variable numRows= DimSize(rgb,0)
+	Variable red, green, blue
+	Variable i, index
+	for(i=0; i<numTraces; i+=1)
+		index = round(i/denominator * (numRows-1))	// spread entire color range over all traces.
+		ModifyGraph/W=$thebigname rgb[i]=(rgb[index][0], rgb[index][1], rgb[index][2])
+	endfor
+
+
+
+End
+
 	
