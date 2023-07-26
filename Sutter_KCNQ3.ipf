@@ -10,7 +10,10 @@
 Constant kKCNQAmpStart = 1900
 Constant kKCNQLengthMeasure = 50
 
-Constant kKCNQTCstart = 2010
+//For sutter
+//Constant kKCNQTCstart = 2010
+//For Neuromatic
+Constant kKCNQTCstart = 2090
 Constant kKCNQTCLength = 10
 
 Constant kKCNQLeakStart = 400
@@ -37,6 +40,7 @@ if(grun_sutter == 1)
 
 Cell_Info_KCNQ_sutter()
 else
+DelUnwantedFolders()
 Cell_Info_KCNQ_neuromatic()
 endif
 
@@ -204,11 +208,14 @@ string cell_id
 SVAR gCustomPath = root:gCustomPath
 
 NVAR grun_sutter = root:grun_sutter
-
+SVAR gCell_id = root:gCell_id
 
 setdatafolder root:$(cell_id)
 
-SVAR gcell_id
+if(grun_sutter == 1)
+	SVAR gcell_id
+endif
+
 SVAR gGenotype
 NVAR gRm
 NVAR gHold
@@ -547,7 +554,7 @@ SVAR gCustomPath
 
 
 	
-	NewLayout/N=data_layout/W=(369,63,875,417)
+	NewLayout/N=data_layout/W=(369,63,1164,941)
 	if (IgorVersion() >= 7.00)
 		LayoutPageAction size=(612,792),margins=(18,18,18,18)
 	endif
@@ -629,6 +636,9 @@ endfor
 
 SaveNotebook/O/S=6 $NoteBookName as gCustomPath+gcell_id+"_data.txt"
 
+
+dowindow/F data_layout
+modifylayout/W=data_layout mag=1
 
 
 

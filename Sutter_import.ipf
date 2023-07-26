@@ -29,6 +29,8 @@ string complete_sweep_name
 
 
 string list_sweep_sets = Wavelist("*_S1_*",";","")
+list_sweep_sets = ListMatch(list_sweep_sets, "!*_min")
+
 string current_mp_set_nm, current_cmd_set_nm
 
 num_sets = Itemsinlist(list_sweep_sets)

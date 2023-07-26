@@ -653,7 +653,7 @@ AppendToGraph/W=half_max_trace/L=left2/B=bottom2 $half_max_I_trace_nm
 ModifyGraph/W=half_max_trace axisEnab(left2)={0,0.15},freePos(left2)=0,freePos(bottom2)={0,left2}
 ModifyGraph noLabel(left2)=2,axThick(left2)=0,lSize=0.3,axThick=0.3
 ModifyGraph noLabel(bottom2)=2,axThick(bottom2)=0
-Setaxis/W=half_max_trace left, -85,55
+Setaxis/W=half_max_trace left, -90,55
 
 
 
